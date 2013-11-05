@@ -1,13 +1,13 @@
 var stage = new createjs.Stage(canvas);
 var levels = [];
 var gridDims = {
-  x: 8,
-  y: 5
+  x: 16,
+  y: 12
 };
 
 var squareDims = {
-  w: 95,
-  h: 95
+  w: 46,
+  h: 46
 };
 
 var CLEAR = 0;
@@ -50,7 +50,7 @@ function isSolid(block) {
 function squareClick(ev) {
   var target = ev.target;
   target.state = (target.state === SOLID) ? CLEAR : SOLID;
-  checkBlocks(target.level-1);
+  checkBlocks();
 }
 
 function drawBlock(block) {
@@ -88,20 +88,19 @@ function setState(block) {
   if (!left || !isSolid(left)) {
     rightUntilSolid(block, function(nb) {
       nb.state = CLEAR;
+      var below = getNeighbour(nb, 'below');
+      if (below) setWaterLevel(below, nb.level-1);
     });
     return;
   }
   var isRb = false;
   var isFloored = true;
-  var waterLevel = block.level + 1;
   rightUntilSolid(block, function(nb) {
     if (isFloored) {
-      var bottom = getNeighbour(nb, 'below');
-      if (isSolid(bottom)) isFloored = true;
-      else if (bottom.state === WATER) isFloored = bottom.waterLevel >= nb.level;
+      var below = getNeighbour(nb, 'below');
+      if (below && isSolid(below)) isFloored = true;
+      else if (below && (below.state === WATER)) isFloored = (below.waterLevel >= nb.level || below.waterLevel == UNKNOWN);
       else isFloored = false;
-      var above = getNeighbour(nb, 'above');
-      if (!isBounded(above)) waterLevel = block.level;
     }
     var right = getNeighbour(nb, 'right');
     if (right && isSolid(right)) isRb = true;
@@ -109,8 +108,21 @@ function setState(block) {
   var state = (isRb && isFloored) ? WATER : CLEAR;
   rightUntilSolid(block, function(nb) {
     nb.state = state;
-    nb.waterLevel = waterLevel;
+    if (nb.state === CLEAR) {
+      var below = getNeighbour(nb, 'below');
+      if (below) setWaterLevel(below, nb.level-1);
+    }
   });
+}
+
+function setWaterLevel(block, level) {
+  if ((block.state !== WATER) || (block.waterLevel !== UNKNOWN)) return;
+  block.waterLevel = level;
+  if (block.level > level) block.state = CLEAR;
+  setWaterLevel(getNeighbour(block, 'above'), level);
+  setWaterLevel(getNeighbour(block, 'below'), level);
+  setWaterLevel(getNeighbour(block, 'left'), level);
+  setWaterLevel(getNeighbour(block, 'right'), level);
 }
 
 function rightUntilSolid(block, cb) {
@@ -123,9 +135,8 @@ function rightUntilSolid(block, cb) {
   }
 }
 
-function forAllBlocks(cb, levelNo) {
-  levelNo = levelNo || 0;
-  for (var ixLevel = levelNo; ixLevel < gridDims.y; ixLevel++) {
+function forAllBlocks(cb) {
+  for (var ixLevel = 0; ixLevel < gridDims.y; ixLevel++) {
     var level = levels[ixLevel];
     for (var ixBlock = 0; ixBlock < gridDims.x; ixBlock++) {
       cb(level[ixBlock]);
@@ -133,18 +144,19 @@ function forAllBlocks(cb, levelNo) {
   }
 }
 
-function checkBlocks(levelNo) {
-  if (levelNo < 1) levelNo = 1;
+function checkBlocks() {
   forAllBlocks(function(block) {
     block.waterLevel = UNKNOWN;
     if (!isSolid(block)) block.state = UNKNOWN;
-  }, levelNo);
+  });
   forAllBlocks(function(block) {
     if (!isSolid(block)) {
       if (block.state === UNKNOWN) setState(block);
     }
+  });
+  forAllBlocks(function(block) {
     drawBlock(block);
-  }, levelNo);
+  });
 }
 
 for (var y = 0; y < gridDims.y; y++) {
@@ -153,12 +165,13 @@ for (var y = 0; y < gridDims.y; y++) {
   levels[levelNo] = level;
   for (var x = 0; x < gridDims.x; x++) {
     var square = new createjs.Shape();
-    var sx = x*100 + 5;
-    var sy = y*100 + 5;
+    var sx = x*50 + 5;
+    var sy = y*50 + 5;
     square.x = sx;
     square.y = sy;
     square.blockNo  = x;
     square.level = levelNo;
+    square.waterLevel = UNKNOWN;
     if (levelNo === 0) {
       square.state = EARTH;
     } else {
