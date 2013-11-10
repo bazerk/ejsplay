@@ -1,4 +1,4 @@
-ninja_data = {
+var ninja_data = {
   framerate: 10,
   images: ["/img/ninja_sprites.png"], // thank you http://forums.tigsource.com/index.php?topic=9404.0!
   frames: {width:48, height:48},

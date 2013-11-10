@@ -33,3 +33,10 @@ contents = contents.replace(r'<% LIBS %>', libs)
 
 with open(index_html, 'w') as f:
     f.write(contents)
+
+with open('./index.html') as f:
+    contents = f.read()
+
+contents = contents.replace('</ul>', '<li><a href="/{0}/index.html">{0}</a></li></ul>'.format(args.name))
+with open('./index.html', 'w') as f:
+    f.write(contents)
