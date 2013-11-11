@@ -161,7 +161,7 @@
     if (start < end) {
       return;
     }
-    var radius = 10;
+    var radius = 16;
     var newStart = 0,
         blocked = false;
     for (var distance = row; distance < radius && !blocked; distance++) {
@@ -179,7 +179,7 @@
         }
 
         var sldist = Math.sqrt(deltaX*deltaX + deltaY*deltaY);
-        var intensity = (1/sldist)*2;
+        var intensity = (1/(sldist*sldist))*16;
         this.setLight(currentX, currentY, 1-intensity);
 
         if (blocked) {
