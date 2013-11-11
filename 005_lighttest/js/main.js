@@ -108,7 +108,7 @@
     for (var row = 0; row < this.width; row++) {
       for (var col = 0; col < this.height; col++) {
         var lightRow = this.light[row];
-        var light = lightRow ? lightRow[col] : 0;
+        var light = lightRow ? lightRow[col] : 1;
         if (typeof(light) === "undefined") light = 1;
         this.rows[row][col].draw(light);
       }
@@ -161,7 +161,7 @@
     if (start < end) {
       return;
     }
-    var radius = 100;
+    var radius = 10;
     var newStart = 0,
         blocked = false;
     for (var distance = row; distance < radius && !blocked; distance++) {
@@ -172,12 +172,15 @@
         var leftSlope = (deltaX - 0.5) / (deltaY + 0.5);
         var rightSlope = (deltaX + 0.5) / (deltaY - 0.5);
 
-        if (!(currentX >= 0 && currentY >= 0 && currentX < this.width && currentY < this.height) || start < rightSlope) {
+        if (!(currentX >= 0 && currentY >= 0 && currentX < this.width && currentY < this.height) || (start < rightSlope)) {
           continue;
         } else if (end > leftSlope) {
           break;
         }
-        this.setLight(currentX, currentY, 0);
+
+        var sldist = Math.sqrt(deltaX*deltaX + deltaY*deltaY);
+        var intensity = (1/sldist)*2;
+        this.setLight(currentX, currentY, 1-intensity);
 
         if (blocked) {
           if (this.rows[currentX][currentY].brick) {
