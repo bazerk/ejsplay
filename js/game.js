@@ -1,29 +1,4 @@
-(function() {
-
-  var worldTileData = {
-    framerate: 1,
-    images: ["/img/oryx/oryx_16bit_fantasy_world_trimmed.png"],
-    frames: {width: 24, height: 24, regX: 12, regY: 12},
-    animations: {
-      grey_wall_1: { frames: [0] },
-      grey_wall_cracks_1: { frames: [1] },
-      grey_wall_heavy_cracks_1: { frames: [2] },
-      grey_floor_1: { frames: [3] },
-      grey_floor_2: { frames: [4] },
-      grey_floor_cracked_1: { frames: [5] },
-      grey_floor_hatched: { frames: [6] },
-    }
-  };
-
-  var creatureTileData = {
-    framerate: 2,
-    images: ["/img/oryx/oryx_16bit_fantasy_creatures_trans_trimmed.png"],
-    frames: {width: 24, height: 24, regX: 12, regY: 12},
-    animations: {
-      blue_warrior: { frames: [0, 18] },
-      black_mage: { frames: [3, 21] },
-    }
-  };
+(function(global) {
 
   var diagonals = [
     [1, 1],
@@ -32,13 +7,13 @@
     [-1, 1]
   ];
 
-  function Player(tiles, frame, row, col) {
+  function Player(tiles, frames, row, col) {
     this.tiles = tiles;
-    this.frame = frame;
+    this.frames = frames;
     this.row = row;
     this.col = col;
     this.dir = 1;
-    this.tile = new createjs.Sprite(this.tiles, this.frame);
+    this.tile = new createjs.Sprite(this.tiles, this.frames.standing);
     stage.addChild(this.tile);
   }
 
@@ -48,15 +23,13 @@
     this.tile.scaleX = this.dir;
   };
 
-  function MapSquare(tiles, brick, row, col) {
-    this.brick = brick;
-    this.tiles = tiles;
-    this.frame = brick ? 'grey_wall_1' : 'grey_floor_1';
+  function MapSquare(tile, properties, row, col) {
+    this.solid = properties.solid;
     this.row = row;
     this.col = col;
     this.stageX = row*24 + 12;
     this.stageY = col*24 + 12;
-    this.tile = new createjs.Sprite(this.tiles, this.frame);
+    this.tile = tile;
     this.tile.x = this.stageX;
     this.tile.y = this.stageY;
     this.shadow = new createjs.Shape();
@@ -72,31 +45,29 @@
   };
 
   function Map() {
-    this.width = 16;
-    this.height = 16;
     this.rows = [];
     this.light = [];
-    this.tiles = new createjs.SpriteSheet(worldTileData);
-    this.creatureTiles = new createjs.SpriteSheet(creatureTileData);
     this.LEFT = 0;
     this.RIGHT = 1;
     this.UP = 2;
     this.DOWN = 3;
   }
 
-  Map.prototype.initialise = function() {
+  Map.prototype.initialise = function(tilesets, mapDef) {
+    this.tilesets = tilesets;
+    this.width = mapDef.width;
+    this.height = mapDef.height;
+
     for (var x=0; x < this.width; x++) {
       this.rows.push([]);
       this.light.push([]);
       for (var y=0; y < this.height; y++) {
-        var addBrick = Math.random() > 0.9;
-        var brick = (addBrick || !x || !y || (x === (this.width-1)) || (y === (this.height-1)));
-        var square = new MapSquare(this.tiles, brick, x, y);
+        var square = new MapSquare(this.tiles, solid, x, y);
         this.rows[x].push(square);
       }
     }
-    this.player = new Player(this.creatureTiles, 'black_mage', 8, 8);
-    this.setFov();
+
+    this.player = new Player(this.tilesets[mapDef.player.tileset],mapDef.player.frames, mapDef.startX, mapDef.startY);
   };
 
   Map.prototype.setLight = function(row, col, lightIntensity) {
@@ -183,7 +154,7 @@
         this.setLight(currentX, currentY, 1-intensity);
 
         if (blocked) {
-          if (this.rows[currentX][currentY].brick) {
+          if (this.rows[currentX][currentY].solid) {
             newStart = rightSlope;
             continue;
           } else {
@@ -191,7 +162,7 @@
             start = newStart;
           }
         } else {
-          if (this.rows[currentX][currentY].brick && distance < radius) {
+          if (this.rows[currentX][currentY].solid && distance < radius) {
             blocked = true;
             this.castLight(startx, starty, distance + 1, start, leftSlope, xx, xy, yx, yy);
             newStart = rightSlope;
@@ -201,30 +172,4 @@
     }
   };
 
-  var stage = new createjs.Stage(canvas);
-  var map = new Map();
-  map.initialise();
-  map.draw();
-
-  kd.UP.press(function () {
-    map.movePlayer(map.UP);
-  });
-
-  kd.LEFT.press(function () {
-    map.movePlayer(map.LEFT);
-  });
-
-  kd.RIGHT.press(function () {
-    map.movePlayer(map.RIGHT);
-  });
-
-  kd.DOWN.press(function () {
-    map.movePlayer(map.DOWN);
-  });
-
-  createjs.Ticker.addEventListener("tick", handleTick);
-  function handleTick(ev) {
-    kd.tick();
-    stage.update(ev);
-  }
-})();
+})(this);
