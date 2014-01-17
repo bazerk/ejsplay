@@ -7,14 +7,15 @@
     [-1, 1]
   ];
 
-  function Player(tiles, frames, row, col) {
+  function Player(stage, tiles, frames, row, col) {
+    this.stage = stage;
     this.tiles = tiles;
     this.frames = frames;
     this.row = row;
     this.col = col;
     this.dir = 1;
     this.tile = new createjs.Sprite(this.tiles, this.frames.standing);
-    stage.addChild(this.tile);
+    this.stage.addChild(this.tile);
   }
 
   Player.prototype.draw = function() {
@@ -23,21 +24,22 @@
     this.tile.scaleX = this.dir;
   };
 
-  function MapSquare(tile, properties, row, col) {
+  function MapSquare(stage, sprite, properties, row, col) {
+    this.stage = stage;
     this.solid = properties.solid;
     this.row = row;
     this.col = col;
     this.stageX = row*24 + 12;
     this.stageY = col*24 + 12;
-    this.tile = tile;
+    this.tile = sprite;
     this.tile.x = this.stageX;
     this.tile.y = this.stageY;
     this.shadow = new createjs.Shape();
     this.shadow.graphics
       .beginFill("rgb(0, 0, 0)")
       .drawRect(this.stageX-12, this.stageY-12, 24, 24);
-    stage.addChild(this.tile);
-    stage.addChild(this.shadow);
+    this.stage.addChild(this.tile);
+    this.stage.addChild(this.shadow);
   }
 
   MapSquare.prototype.draw = function(lightIntensity) {
@@ -53,21 +55,31 @@
     this.DOWN = 3;
   }
 
-  Map.prototype.initialise = function(tilesets, mapDef) {
-    this.tilesets = tilesets;
-    this.width = mapDef.width;
-    this.height = mapDef.height;
+  Map.prototype.initialise = function(stage, mapDef) {
+    this.stage = stage;
+    this.tiles = [];
+    for (var tileset in mapDef.tilesets) {
+      this.tiles[tileset] = new createjs.SpriteSheet(mapDef.tilesets[tileset]);
+    }
+    
+    this.width = mapDef.world.width;
+    this.height = mapDef.world.height;
 
     for (var x=0; x < this.width; x++) {
       this.rows.push([]);
       this.light.push([]);
       for (var y=0; y < this.height; y++) {
-        var square = new MapSquare(this.tiles, solid, x, y);
+        var ixSquare = y * this.width + x;
+        var squareDef = mapDef.world.tiles[ixSquare];
+        var sprite = new createjs.Sprite(this.tiles[squareDef.tileset], squareDef.frame);
+        var square = new MapSquare(this.stage, sprite, squareDef.properties, x, y);
         this.rows[x].push(square);
       }
     }
 
-    this.player = new Player(this.tilesets[mapDef.player.tileset],mapDef.player.frames, mapDef.startX, mapDef.startY);
+    var playerDef = mapDef.player;
+    this.player = new Player(stage, this.tiles[playerDef.tileset], playerDef.frames, playerDef.startX, playerDef.startY);
+    this.setFov();
   };
 
   Map.prototype.setLight = function(row, col, lightIntensity) {
@@ -117,10 +129,10 @@
   };
 
   Map.prototype.setFov = function() {
-    map.light = [];
-    var row = map.player.row;
-    var col = map.player.col;
-    map.setLight(row, col, 0);
+    this.light = [];
+    var row = this.player.row;
+    var col = this.player.col;
+    this.setLight(row, col, 0);
     for (var ixDiag = 0; ixDiag < diagonals.length; ixDiag++) {
       var d = diagonals[ixDiag];
       this.castLight(row, col, 1, 1, 0, 0, d[0], d[1], 0);
@@ -171,5 +183,7 @@
       }
     }
   };
+
+  global.Map = Map;
 
 })(this);
